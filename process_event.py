@@ -3,6 +3,10 @@ import logging
 
 
 class EventProcessor(object):
+    """Process invoice created events from Balanced API service, create 
+    corresponding invoice entities in Billy service
+
+    """
 
     def __init__(self, logger=None):
         self.logger = logger or logging.getLogger(__name__)
@@ -43,7 +47,7 @@ class EventProcessor(object):
                 ' (max ${:.2f} per debit)'
                 .format(ev['bank_account_debit_variable_fee_cap'] / 100.0)
             )
-        # TODO: odd, the variables are missing
+        # TODO: this only appears in new schema, add it on later
         """
         credit_successed_item = dict(
             type='Credits: succeeded',
@@ -137,6 +141,11 @@ class EventProcessor(object):
             adjustments=adjustments,
         )
         print invoice
+        # TODO: ack to the message queue
+        # TODO: think what about this processing failed? what if we 
+        # finished creating an invoice in Billy, but failed to ack to the
+        # queue service? then we will have duplicate invoice for the same
+        # message... hum....
 
 
 def main():
