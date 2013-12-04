@@ -100,7 +100,44 @@ class EventProcessor(object):
         total_fee = ev['total_fee']
         adjustments_total_fee = ev['adjustments_total_fee']
 
-        # TODO: call to billy API, create invoice
+        adjustments = [
+            dict(total=adjustments_total_fee),
+        ]
+
+        import balanced
+        from billy_client import BillyAPI
+
+        #api = BillyAPI(None, endpoint='http://127.0.0.1:6543')
+        #company = api.create_company(processor_key='ef13dce2093b11e388de026ba7d31e6f')
+        #print company
+        #return
+
+        api = BillyAPI(
+            api_key='3pw6Hmo1J6cowcnw8DjmyYMza3yJSKGhsmj5myoEZu86', 
+            endpoint='http://127.0.0.1:6543',
+        )
+        company = api.get_company('CPFfwjvyhiSG39iHG5KMBeoy')
+        # TODO: get corresponding customer
+        customer = company.create_customer()
+        # TODO: should get existing customer payment method
+        # tokenlize a payment method
+        balanced.configure('ef13dce2093b11e388de026ba7d31e6f')
+        card = balanced.Card(
+            expiration_month='12',
+            security_code='123',
+            card_number='5105105105105100',
+            expiration_year='2020'
+        ).save()
+        # call to billy API, create an invoice
+        invoice = customer.invoice(
+            title='Balanced Transaction Usage Invoice',
+            amount=total_fee,
+            payment_uri=card.uri,
+            items=items,
+            adjustments=adjustments,
+        )
+        print invoice
+
 
 def main():
     paylod = '''{
