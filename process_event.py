@@ -15,7 +15,9 @@ class EventProcessor(object):
         """Process one invoice event from Balanced API service
 
         """
-        self.logger.debug('Processing payload: %r', event_json)
+        self.logger.info('Processing event %s for marketplace %s', 
+                         event_json['_id'], event_json['marketplace_guid'])
+        self.logger.log(logging.NOTSET, 'Payload: %r', event_json)
         ev = event_json['entity_view']
 
         hold_item = dict(
@@ -99,10 +101,21 @@ class EventProcessor(object):
             chargeback_item,
         ]
         for item in items:
-            print item['type'], item
+            self.logger.info(
+                'Item: type=%s, quantity=%s, amount=%s, '
+                'name=%r, total=%s',
+                item['type'],
+                item['quantity'],
+                item['amount'],
+                item['name'],
+                item['total'],
+            )
 
         total_fee = ev['total_fee']
         adjustments_total_fee = ev['adjustments_total_fee']
+
+        self.logger.info('Total fee: %s', total_fee)
+        self.logger.info('Adjustment fee: %s', adjustments_total_fee)
 
         adjustments = [
             dict(total=adjustments_total_fee),
@@ -335,4 +348,5 @@ def main():
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO)
     main()
