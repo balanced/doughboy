@@ -1,5 +1,10 @@
 from __future__ import unicode_literals
+import os
 import logging
+import logging.config
+
+from billy_client import BillyAPI
+from billy_client import DuplicateExternalIDError
 
 
 class EventProcessor(object):
@@ -8,8 +13,9 @@ class EventProcessor(object):
 
     """
 
-    def __init__(self, logger=None):
+    def __init__(self, config, logger=None):
         self.logger = logger or logging.getLogger(__name__)
+        self.config = config
 
     def process(self, event_json):
         """Process one invoice event from Balanced API service
@@ -125,20 +131,13 @@ class EventProcessor(object):
             dict(total=adjustments_total_fee),
         ]
 
-        import balanced
-        from billy_client import BillyAPI
-        from billy_client import DuplicateExternalIDError
-
-        #api = BillyAPI(None, endpoint='http://127.0.0.1:6543')
-        #company = api.create_company(processor_key='ef13dce2093b11e388de026ba7d31e6f')
-        #print company
-        #return
+        billy_cfg = self.config['billy']
 
         api = BillyAPI(
-            api_key='FXSpohZE8NuUn5W1peb4FhcXQp49Bc1vDpLkCsPstNRS', 
-            endpoint='http://127.0.0.1:6543',
+            api_key=billy_cfg['api_key'], 
+            endpoint=billy_cfg['endpoint'],
         )
-        company = api.get_company('CPXVsVvBDY94p3zVNvLSZ21M')
+        company = api.get_company(billy_cfg['company_guid'])
         # TODO: figure how to create a customer from marketplace URI,
         # they should be 1:1 relation in v1.1 API
 
@@ -151,8 +150,6 @@ class EventProcessor(object):
         else:
             customer = customers[0]
         # TODO: should get existing customer payment method
-        # tokenlize a payment method
-        balanced.configure('ef13dce2093b11e388de026ba7d31e6f')
         # call to billy API, create an invoice
         try:
             invoice = customer.invoice(
@@ -173,12 +170,44 @@ class EventProcessor(object):
         # TODO: ack to the message queue
 
 
+def setup_logging(
+    default_path='logging.yaml', 
+    default_level=logging.INFO,
+    env_key='LOG_CFG'
+):
+    """Setup logging configuration
+
+    """
+    import yaml
+    path = default_path
+    value = os.getenv(env_key, None)
+    if value:
+        path = value
+    if os.path.exists(path):
+        with open(path, 'rt') as f:
+            config = yaml.load(f.read())
+        logging.config.dictConfig(config)
+    else:
+        logging.basicConfig(level=default_level)
+
+
 def main():
     import os
     import json
-    processor = EventProcessor()
+    import yaml
 
+    setup_logging()
+
+    cfg_path = os.environ.get('CFG', 'dev_cfg.yaml')
+    with open(cfg_path, 'rt') as cfg_file:
+        config = yaml.load(cfg_file)
+
+    processor = EventProcessor(config)
     logger = logging.getLogger(__name__)
+
+    logger.info('Start processing events')
+    logger.info('Billy Endpoint: %s', config['billy']['endpoint'])
+    logger.info('Billy Company GUID: %s', config['billy']['company_guid'])
 
     input_dir = 'input'
     for filename in os.listdir(input_dir):
