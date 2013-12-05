@@ -124,6 +124,7 @@ class EventProcessor(object):
 
         import balanced
         from billy_client import BillyAPI
+        from billy_client import DuplicateExternalIDError
 
         #api = BillyAPI(None, endpoint='http://127.0.0.1:6543')
         #company = api.create_company(processor_key='ef13dce2093b11e388de026ba7d31e6f')
@@ -131,15 +132,21 @@ class EventProcessor(object):
         #return
 
         api = BillyAPI(
-            api_key='3pw6Hmo1J6cowcnw8DjmyYMza3yJSKGhsmj5myoEZu86', 
+            api_key='Ehuk9jkcENFxv1Jk2bprUUtrAATv8vNkRw9Fa3m1SkYd', 
             endpoint='http://127.0.0.1:6543',
         )
-        company = api.get_company('CPFfwjvyhiSG39iHG5KMBeoy')
+        company = api.get_company('CPTQhADwa9wJYSspzLDxFEn3')
         # TODO: figure how to create a customer from marketplace URI,
         # they should be 1:1 relation in v1.1 API
-        customer = company.create_customer(
-            external_id=marketplace_uri,
-        )
+
+        # make sure we won't duplicate customer for the same marketplace
+        customers = list(api.list_customers(external_id=marketplace_uri))
+        if not customers:
+            customer = company.create_customer(
+                external_id=marketplace_uri,
+            )
+        else:
+            customer = customers[0]
         # TODO: should get existing customer payment method
         # tokenlize a payment method
         balanced.configure('ef13dce2093b11e388de026ba7d31e6f')
@@ -150,19 +157,23 @@ class EventProcessor(object):
             expiration_year='2020'
         ).save()
         # call to billy API, create an invoice
-        invoice = customer.invoice(
-            title='Balanced Transaction Usage Invoice',
-            amount=total_fee,
-            payment_uri=card.uri,
-            items=items,
-            adjustments=adjustments,
-        )
+        try:
+            invoice = customer.invoice(
+                title='Balanced Transaction Usage Invoice',
+                amount=total_fee,
+                payment_uri=card.uri,
+                items=items,
+                adjustments=adjustments,
+                external_id=event_json['guid'],
+            )
+        except DuplicateExternalIDError:
+            self.logger.warn('The invoice for event %s have already been '
+                             'created, just ack the message', 
+                             event_json['guid'])
+            # TODO: ack here
+            return
         print invoice
         # TODO: ack to the message queue
-        # TODO: think what about this processing failed? what if we 
-        # finished creating an invoice in Billy, but failed to ack to the
-        # queue service? then we will have duplicate invoice for the same
-        # message... hum....
 
 
 def main():
