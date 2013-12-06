@@ -3,6 +3,8 @@ import os
 import logging
 import logging.config
 
+from kombu.mixins import ConsumerMixin
+from kombu import Queue
 from billy_client import BillyAPI
 from billy_client import DuplicateExternalIDError
 
@@ -164,10 +166,28 @@ class EventProcessor(object):
             self.logger.warn('The invoice for event %s have already been '
                              'created, just ack the message', 
                              event_json['guid'])
-            # TODO: ack here
-            return
-        print invoice
-        # TODO: ack to the message queue
+        self.logger.info('Processed event %s for marketplace %s', 
+                         event_json['guid'], event_json['marketplace_guid'])
+
+
+class EventConsumer(ConsumerMixin):
+
+    def __init__(self, connection, queues, processor, logger=None):
+        self.logger = logger or logging.getLogger(__name__)
+        self.connection = connection
+        self.queues = queues
+        self.processor = processor
+
+    def get_consumers(self, Consumer, channel):
+        return [
+            Consumer(self.queues, callbacks=[self.on_message], accept=['json']),
+        ]
+
+    def on_message(self, body, message):
+        event_json = body
+        self.processor.process(event_json)
+        message.ack()
+        self.logger.info('Ack message %s', event_json['guid'])
 
 
 def setup_logging(
@@ -192,9 +212,8 @@ def setup_logging(
 
 
 def main():
-    import os
-    import json
     import yaml
+    from kombu import Connection
 
     setup_logging()
 
@@ -209,19 +228,20 @@ def main():
     logger.info('Billy Endpoint: %s', config['billy']['endpoint'])
     logger.info('Billy Company GUID: %s', config['billy']['company_guid'])
 
-    input_dir = 'input'
-    for filename in os.listdir(input_dir):
-        if filename.startswith('.'):
-            continue
-        filepath = os.path.join(input_dir, filename)
-        logger.info('Loading %s', filepath)
-        with open(filepath, 'rt') as json_file:
-            content = json_file.read()
-            if not content.strip():
-                logger.warn('Ignore empty file %s', filepath)
-                continue
-            event_json = json.loads(content)
-        processor.process(event_json)
+    amqp_cfg = config['amqp']
+    amqp_uri = amqp_cfg['uri']
+    queue = amqp_cfg['queue']
+    logger.info('Connecting to message queue server %s', amqp_uri)
+    logger.info('Pulling events from queue %s', queue)
+
+    try:
+        with Connection(amqp_uri) as conn:
+            consumer = EventConsumer(conn, Queue(queue), processor)
+            consumer.run()
+    except (SystemExit, KeyboardInterrupt):
+        pass
+
+    logger.info('Stop processing event')
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
