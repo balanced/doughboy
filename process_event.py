@@ -23,19 +23,21 @@ class EventProcessor(object):
         """Process one invoice event from Balanced API service
 
         """
-        self.logger.info('Processing event %s for marketplace %s', 
-                         event_json['guid'], event_json['marketplace_guid'])
-        self.logger.log(logging.NOTSET, 'Payload: %r', event_json)
         evs = event_json['entity_views']
         ev10 = evs['1.0']
 
         total_fee = ev10['total_fee']
         adjustments_total_fee = ev10['adjustments_total_fee']
         marketplace_uri = ev10['marketplace_uri']
+        marketplace_guid = marketplace_uri.split('/')[-1]
         # it is possible a marketplace exists without a bank account associated
         # with it, in that case, we just create the invoice wihout `payment_uri`
         # and update it later when the marketplace got a bank account
         source_uri = ev10.get('source_uri')
+
+        self.logger.info('Processing event %s for marketplace %s', 
+                         event_json['guid'], marketplace_guid)
+        self.logger.log(logging.NOTSET, 'Payload: %r', event_json)
 
         hold_item = dict(
             type='Holds',
@@ -167,7 +169,7 @@ class EventProcessor(object):
                              'created, just ack the message', 
                              event_json['guid'])
         self.logger.info('Processed event %s for marketplace %s', 
-                         event_json['guid'], event_json['marketplace_guid'])
+                         event_json['guid'], marketplace_guid)
 
 
 class EventConsumer(ConsumerMixin):
@@ -185,6 +187,11 @@ class EventConsumer(ConsumerMixin):
 
     def on_message(self, body, message):
         event_json = body
+        event_type = event_json['type']
+        if not event_type.startswith('invoice.'):
+            self.logger.warn('Ignore unknown event type %r', event_type)
+            message.ack()
+            return
         self.processor.process(event_json)
         message.ack()
         self.logger.info('Ack message %s', event_json['guid'])
