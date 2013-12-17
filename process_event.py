@@ -43,7 +43,7 @@ class EventProcessor(object):
             type='Holds',
             quantity=ev10['holds_count'],
             amount=ev10['holds_total_amount'],
-            name='${:.2f} per hold'.format(ev10['hold_fee']),
+            name='${:.2f} per hold'.format(ev10['hold_fee'] / 100.0),
             total=ev10['holds_total_fee'],
         )
         debit_card_item = dict(
@@ -72,14 +72,18 @@ class EventProcessor(object):
             type='Credits: succeeded',
             quantity=ev10['bank_account_credits_count'],
             amount=ev10['bank_account_credits_total_amount'],
-            name='${:.2f} per credit'.format(ev10['bank_account_credit_fee']),
+            name='${:.2f} per credit'.format(
+                ev10['bank_account_credit_fee'] / 100.0
+            ),
             total=ev10['bank_account_credits_total_fee'],
         )
         credit_failed_item = dict(
             type='Credits: failed',
             quantity=ev10['failed_credits_count'],
             amount=ev10['failed_credits_total_amount'],
-            name='${:.2f} per failed credit'.format(ev10['failed_credit_fee']),
+            name='${:.2f} per failed credit'.format(
+                ev10['failed_credit_fee'] / 100.0
+            ),
             total=ev10['failed_credits_total_fee'],
         )
         refund_item = dict(
@@ -164,6 +168,7 @@ class EventProcessor(object):
                 adjustments=adjustments,
                 external_id=event_json['guid'],
             )
+            self.logger.info('Created invoice %s', invoice['guid'])
         except DuplicateExternalIDError:
             self.logger.warn('The invoice for event %s have already been '
                              'created, just ack the message', 
