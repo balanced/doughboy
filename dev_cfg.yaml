@@ -8,9 +8,6 @@ billy:
     endpoint: http://127.0.0.1:6543
     company_guid: CPXVsVvBDY94p3zVNvLSZ21M
 
-balanced:
-    api_key: ef13dce2093b11e388de026ba7d31e6f
-
 amqp:
     uri: amqp://guest:guest@localhost:5672//
     queue: test_input_queue
