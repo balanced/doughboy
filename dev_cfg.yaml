@@ -1,5 +1,8 @@
 ---
 
+# the folder for output event json files, for debugging later
+event_dir: events
+
 billy:
     api_key: FXSpohZE8NuUn5W1peb4FhcXQp49Bc1vDpLkCsPstNRS
     endpoint: http://127.0.0.1:6543

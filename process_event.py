@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 import os
+import json
 import logging
 import logging.config
 
@@ -168,7 +169,7 @@ class EventProcessor(object):
                 adjustments=adjustments,
                 external_id=event_json['guid'],
             )
-            self.logger.info('Created invoice %s', invoice['guid'])
+            self.logger.info('Created invoice %s', invoice.guid)
         except DuplicateExternalIDError:
             self.logger.warn('The invoice for event %s have already been '
                              'created, just ack the message', 
@@ -179,11 +180,12 @@ class EventProcessor(object):
 
 class EventConsumer(ConsumerMixin):
 
-    def __init__(self, connection, queues, processor, logger=None):
+    def __init__(self, connection, queues, processor, event_dir , logger=None):
         self.logger = logger or logging.getLogger(__name__)
         self.connection = connection
         self.queues = queues
         self.processor = processor
+        self.event_dir = event_dir
 
     def get_consumers(self, Consumer, channel):
         return [
@@ -197,6 +199,12 @@ class EventConsumer(ConsumerMixin):
             self.logger.warn('Ignore unknown event type %r', event_type)
             message.ack()
             return
+        if self.event_dir is not None:
+            event_path = os.path.join(self.event_dir, event_json['guid'])
+            with open(event_path, 'wt') as event_file:
+                data = json.dumps(event_json, sort_keys=True,
+                                 indent=4, separators=(',', ': '))
+                event_file.write(data)
         self.processor.process(event_json)
         message.ack()
         self.logger.info('Ack message %s', event_json['guid'])
@@ -240,6 +248,7 @@ def main():
     logger.info('Billy Endpoint: %s', config['billy']['endpoint'])
     logger.info('Billy Company GUID: %s', config['billy']['company_guid'])
 
+    event_dir = config.get('event_dir')
     amqp_cfg = config['amqp']
     amqp_uri = amqp_cfg['uri']
     queue = amqp_cfg['queue']
@@ -248,7 +257,7 @@ def main():
 
     try:
         with Connection(amqp_uri) as conn:
-            consumer = EventConsumer(conn, Queue(queue), processor)
+            consumer = EventConsumer(conn, Queue(queue), processor, event_dir)
             consumer.run()
     except (SystemExit, KeyboardInterrupt):
         pass
