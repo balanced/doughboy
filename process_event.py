@@ -52,7 +52,7 @@ class EventProcessor(object):
             quantity=ev10['card_debits_count'],
             amount=ev10['card_debits_total_amount'],
             name='{}% of txn amount'.format(ev10['variable_fee_percentage']),
-            total=ev10['failed_credits_total_fee'],
+            total=ev10['card_debits_total_fee'],
         )
         debit_bank_item = dict(
             type='Debits: bank accounts',
