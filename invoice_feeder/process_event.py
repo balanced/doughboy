@@ -143,15 +143,23 @@ class EventProcessor(object):
                 item['total'],
             )
 
+        ev11 = event_json['entity_views']['1.1']['invoices'][0]
+        adjustments = []
+        for adjustment in ev11['adjustments']:
+            self.logger.info(
+                'Adjustment: amount=%s, reason=%s', 
+                adjustment['amount'], adjustment['description'],
+            )
+            adjustments.append(dict(
+                amount=adjustment['amount'],
+                reason=adjustment['description'],
+            ))
+
         self.logger.info('Marketplace URI: %s', marketplace_uri)
         self.logger.info('Customer URI: %s', customer_uri)
         self.logger.info('Funding source URI: %s', funding_source_uri)
         self.logger.info('Adjustment fee: %s', adjustments_total_fee)
         self.logger.info('Total fee: %s', total_fee)
-
-        adjustments = [
-            dict(total=adjustments_total_fee),
-        ]
 
         billy_cfg = self.config['billy']
 

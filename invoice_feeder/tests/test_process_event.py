@@ -52,4 +52,31 @@ class TestProcessEvent(unittest.TestCase):
         )
         api.list_customers.assert_called_with(external_id=customer_uri)
         # create invoice
-        # TODO: do more tests here
+        expected_amount = 72
+        expected_payment_uri = '/v1/bank_accounts/BA2eRgRHV25MuvHWUL4BYOYv'
+        expected_items = [
+            dict(type='Holds', quantity=1, amount=112, total=30, name='$0.30 per hold'),
+            dict(type='Debits: cards', quantity=1, amount=1221, total=42, name='3.5% of txn amount'),
+            dict(type='Debits: bank accounts', quantity=0, amount=0, total=0, name='1.0% of txn amount (max $5.00 per debit)'),
+            dict(type='Credits: succeeded', quantity=0, amount=0, total=0, name='$0.25 per credit'),
+            dict(type='Credits: failed', quantity=0, amount=0, total=0, name='$0.00 per failed credit'),
+            dict(type='Refunds', quantity=0, amount=0, total=0, name='3.5% of txn amount returned'),
+            dict(type='Reversals', quantity=0, amount=0, total=0, name='$0.00 per reversal'),
+            dict(type='Chargebacks', quantity=0, amount=0, total=0, name='$15.00 per failed chargeback'),
+        ]
+        expected_adjustments = [dict(
+            amount=999,
+            reason='hello',
+        )]
+        expected_external_id = 'IV2elPkokX5rRAxobd84fM3t'
+
+        _, kwargs = customer.invoice.call_args
+        self.assertEqual(customer.invoice.call_count, 1)
+        self.assertEqual(kwargs.pop('title'), 
+                         'Balanced Transaction Usage Invoice')
+        self.assertEqual(kwargs.pop('amount'), expected_amount)
+        self.assertEqual(kwargs.pop('external_id'), expected_external_id)
+        self.assertEqual(kwargs.pop('payment_uri'), expected_payment_uri)
+        self.assertEqual(kwargs.pop('adjustments'), expected_adjustments)
+        self.assertEqual(kwargs.pop('items'), expected_items)
+        self.assertFalse(kwargs)
