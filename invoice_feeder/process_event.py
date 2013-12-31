@@ -24,91 +24,103 @@ class EventProcessor(object):
         """Process one invoice event from Balanced API service
 
         """
-        evs = event_json['entity_views']
-        ev10 = evs['1.0']
+        # prepare necessary data
+        mirrored_customer_guid = event_json['mirrored_customer_guid']
+        mirrored_funding_source_guid = event_json['mirrored_funding_source_guid']
 
-        total_fee = ev10['total_fee']
-        adjustments_total_fee = ev10['adjustments_total_fee']
-        marketplace_uri = ev10['marketplace_uri']
-        marketplace_guid = marketplace_uri.split('/')[-1]
-        # it is possible a marketplace exists without a bank account associated
-        # with it, in that case, we just create the invoice wihout `payment_uri`
-        # and update it later when the marketplace got a bank account
-        source_uri = ev10.get('source_uri')
+        entity_data = event_json['entity_data']
+        invoice_guid = entity_data['guid']
+        marketplace_guid = entity_data['marketplace_guid']
+        marketplace_uri = '/v1/marketplaces/{}'.format(marketplace_guid)
+        customer_uri = '/v1/customers/{}'.format(mirrored_customer_guid)
+        if mirrored_funding_source_guid.startswith('BA'):
+            funding_type = 'bank_accounts'
+        elif mirrored_funding_source_guid.startswith('PA'):
+            funding_type = 'proxy_accounts'
+        else:
+            raise ValueError(
+                'Unexpected funding source {}'.format(mirrored_customer_guid)
+            )
+        funding_source_uri = '/v1/{}/{}'.format(
+            funding_type,
+            mirrored_funding_source_guid,
+        )
+        total_fee = entity_data['total_fee']
+        adjustments_total_fee = entity_data['adjustments_total_fee']
 
-        self.logger.info('Processing event %s for marketplace %s', 
-                         event_json['guid'], marketplace_guid)
+        self.logger.info('Processing invoice %s for marketplace %s', 
+                         invoice_guid, marketplace_guid)
         self.logger.log(logging.NOTSET, 'Payload: %r', event_json)
 
         hold_item = dict(
             type='Holds',
-            quantity=ev10['holds_count'],
-            amount=ev10['holds_total_amount'],
-            name='${:.2f} per hold'.format(ev10['hold_fee'] / 100.0),
-            total=ev10['holds_total_fee'],
+            quantity=entity_data['holds_count'],
+            amount=entity_data['holds_total_amount'],
+            name='${:.2f} per hold'.format(entity_data['hold_fee'] / 100.0),
+            total=entity_data['holds_total_fee'],
         )
         debit_card_item = dict(
             type='Debits: cards',
-            quantity=ev10['card_debits_count'],
-            amount=ev10['card_debits_total_amount'],
-            name='{}% of txn amount'.format(ev10['variable_fee_percentage']),
-            total=ev10['card_debits_total_fee'],
+            quantity=entity_data['card_debits_count'],
+            amount=entity_data['card_debits_total_amount'],
+            name='{}% of txn amount'.format(entity_data['variable_fee_percentage']),
+            total=entity_data['card_debits_total_fee'],
         )
         debit_bank_item = dict(
             type='Debits: bank accounts',
-            quantity=ev10['bank_account_debits_count'],
-            amount=ev10['bank_account_debits_total_amount'],
+            quantity=entity_data['bank_account_debits_count'],
+            amount=entity_data['bank_account_debits_total_amount'],
             name=(
                 '{}% of txn amount'
-                .format(ev10['bank_account_debit_variable_fee_percentage'])
+                .format(entity_data['bank_account_debit_variable_fee_percentage'])
             ),
-            total=ev10['bank_account_debits_total_fee'],
+            total=entity_data['bank_account_debits_total_fee'],
         )
-        if ev10['bank_account_debit_variable_fee_cap']:
+        if entity_data['bank_account_debit_variable_fee_cap']:
             debit_bank_item['name'] += (
                 ' (max ${:.2f} per debit)'
-                .format(ev10['bank_account_debit_variable_fee_cap'] / 100.0)
+                .format(entity_data['bank_account_debit_variable_fee_cap'] / 100.0)
             )
         credit_successed_item = dict(
             type='Credits: succeeded',
-            quantity=ev10['bank_account_credits_count'],
-            amount=ev10['bank_account_credits_total_amount'],
+            quantity=entity_data['bank_account_credits_count'],
+            amount=entity_data['bank_account_credits_total_amount'],
             name='${:.2f} per credit'.format(
-                ev10['bank_account_credit_fee'] / 100.0
+                entity_data['bank_account_credit_fee'] / 100.0
             ),
-            total=ev10['bank_account_credits_total_fee'],
+            total=entity_data['bank_account_credits_total_fee'],
         )
         credit_failed_item = dict(
             type='Credits: failed',
-            quantity=ev10['failed_credits_count'],
-            amount=ev10['failed_credits_total_amount'],
+            quantity=entity_data['failed_credits_count'],
+            amount=entity_data['failed_credits_total_amount'],
             name='${:.2f} per failed credit'.format(
-                ev10['failed_credit_fee'] / 100.0
+                entity_data['failed_credit_fee'] / 100.0
             ),
-            total=ev10['failed_credits_total_fee'],
+            total=entity_data['failed_credits_total_fee'],
         )
         refund_item = dict(
             type='Refunds',
-            quantity=ev10['reversals_count'],
-            amount=ev10['reversals_total_amount'],
-            name='{}% of txn amount returned'.format(ev10['variable_fee_percentage']),
-            total=ev10['refunds_total_fee'],
+            quantity=entity_data['reversals_count'],
+            amount=entity_data['reversals_total_amount'],
+            name='{}% of txn amount returned'.format(entity_data['variable_fee_percentage']),
+            total=entity_data['refunds_total_fee'],
         )
         reversal_item = dict(
             type='Reversals',
-            quantity=ev10['reversals_count'],
-            amount=ev10['reversals_total_amount'],
+            quantity=entity_data['reversals_count'],
+            amount=entity_data['reversals_total_amount'],
             name='${:.2f} per reversal'.format(0),
-            total=ev10['reversals_total_fee'],
+            total=entity_data['reversals_total_fee'],
         )
         chargeback_item = dict(
             type='Chargebacks',
-            quantity=ev10['lost_debit_chargebacks_count'],
-            amount=ev10['lost_debit_chargebacks_total_amount'],
+            quantity=entity_data['lost_debit_chargebacks_count'],
+            amount=entity_data['lost_debit_chargebacks_total_amount'],
             name='${:.2f} per failed chargeback'.format(
-                ev10['chargeback_fixed_fee'] / 100.0
+                entity_data['chargeback_fixed_fee'] / 100.0
             ),
-            total=ev10['lost_debit_chargebacks_total_fee'],
+            total=entity_data['lost_debit_chargebacks_total_fee'],
         )
         items = [
             hold_item,
@@ -131,10 +143,11 @@ class EventProcessor(object):
                 item['total'],
             )
 
-        self.logger.info('Total fee: %s', total_fee)
-        self.logger.info('Adjustment fee: %s', adjustments_total_fee)
-        self.logger.info('Source URI: %s', source_uri)
         self.logger.info('Marketplace URI: %s', marketplace_uri)
+        self.logger.info('Customer URI: %s', customer_uri)
+        self.logger.info('Funding source URI: %s', funding_source_uri)
+        self.logger.info('Adjustment fee: %s', adjustments_total_fee)
+        self.logger.info('Total fee: %s', total_fee)
 
         adjustments = [
             dict(total=adjustments_total_fee),
@@ -147,35 +160,37 @@ class EventProcessor(object):
             endpoint=billy_cfg['endpoint'],
         )
         company = api.get_company(billy_cfg['company_guid'])
-        # TODO: figure how to create a customer from marketplace URI,
-        # they should be 1:1 relation in v1.1 API
 
-        # make sure we won't duplicate customer for the same marketplace
-        customers = list(api.list_customers(external_id=marketplace_uri))
+        # retrieval the customer 
+        customers = list(api.list_customers(external_id=customer_uri))
         if not customers:
-            customer = company.create_customer(
-                external_id=marketplace_uri,
-            )
-        else:
+            customer = company.create_customer(external_id=customer_uri)
+        elif len(customers) == 1:
             customer = customers[0]
-        # TODO: should get existing customer payment method
-        # call to billy API, create an invoice
+        else:
+            raise RuntimeError(
+                'WTF? we should only have one customer for that',
+            )
         try:
             invoice = customer.invoice(
+                # TODO: a better title here
                 title='Balanced Transaction Usage Invoice',
                 amount=total_fee,
-                payment_uri=source_uri,
+                payment_uri=funding_source_uri,
                 items=items,
                 adjustments=adjustments,
-                external_id=event_json['guid'],
+                external_id=invoice_guid,
             )
-            self.logger.info('Created invoice %s', invoice.guid)
+            self.logger.info(
+                'Created invoice %s in Billy for %s (GUID from Balanced)', 
+                invoice.guid, invoice_guid,
+            )
         except DuplicateExternalIDError:
-            self.logger.warn('The invoice for event %s have already been '
-                             'created, just ack the message', 
-                             event_json['guid'])
-        self.logger.info('Processed event %s for marketplace %s', 
-                         event_json['guid'], marketplace_guid)
+            self.logger.warn('The invoice %s (GUID from Balanced) have already '
+                             'been created, just ack the message', 
+                             invoice_guid)
+        self.logger.info('Processed invoice %s (GUID from Balanced) for '
+                         'marketplace %s', invoice_guid, marketplace_uri)
 
 
 class EventConsumer(ConsumerMixin):

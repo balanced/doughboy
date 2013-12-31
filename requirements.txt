@@ -1,2 +1,3 @@
 PyYaml
 kombu
+git+https://github.com/victorlin/billy-client.git
