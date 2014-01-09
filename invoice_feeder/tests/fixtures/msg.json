@@ -6,8 +6,8 @@
         "account_debits_count": 0,
         "account_debits_total_amount": 0,
         "account_debits_total_fee": 0,
-        "adjustments_count": 0,
-        "adjustments_total_fee": 0,
+        "adjustments_count": 2,
+        "adjustments_total_fee": -7,
         "bank_account_credit_fee": 25,
         "bank_account_credits_count": 0,
         "bank_account_credits_total_amount": 0,
@@ -27,7 +27,7 @@
         "cheque_credits_count": 0,
         "cheque_credits_total_amount": 0,
         "cheque_credits_total_fee": 0,
-        "count": 2,
+        "count": 4,
         "created_at": "2013-12-31T07:50:58.758000",
         "failed_credit_fee": 0,
         "failed_credits_count": 0,
@@ -77,13 +77,18 @@
             },
             "adjustments": [
                 {
-                    "amount": 999,
+                    "amount": -10,
                     "created_at": "2013-12-31T07:50:58.493534Z",
                     "description": "hello"
+                },
+                {
+                    "amount": 3,
+                    "created_at": "2013-12-31T07:50:58.493534Z",
+                    "description": "baby"
                 }
             ],
-            "adjustments_count": 0,
-            "adjustments_total_fee": 0,
+            "adjustments_count": 2,
+            "adjustments_total_fee": -7,
             "bank_account_credit_fee": 25,
             "bank_account_credits_count": 0,
             "bank_account_credits_total_amount": 0,
@@ -140,13 +145,18 @@
                 {
                     "adjustments": [
                         {
-                            "amount": 999,
+                            "amount": -10,
                             "created_at": "2013-12-31T07:50:58.493534Z",
                             "description": "hello"
+                        },
+                        {
+                            "amount": 3,
+                            "created_at": "2013-12-31T07:50:58.493534Z",
+                            "description": "baby"
                         }
                     ],
-                    "adjustments_count": 0,
-                    "adjustments_total_fee": 0,
+                    "adjustments_count": 2,
+                    "adjustments_total_fee": -7,
                     "bank_account_credit_fee": 25,
                     "bank_account_credits_count": 0,
                     "bank_account_credits_total_amount": 0,

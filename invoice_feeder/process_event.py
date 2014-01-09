@@ -55,26 +55,26 @@ class EventProcessor(object):
         hold_item = dict(
             type='Holds',
             quantity=entity_data['holds_count'],
-            amount=entity_data['holds_total_amount'],
+            volume=entity_data['holds_total_amount'],
             name='${:.2f} per hold'.format(entity_data['hold_fee'] / 100.0),
-            total=entity_data['holds_total_fee'],
+            amount=entity_data['holds_total_fee'],
         )
         debit_card_item = dict(
             type='Debits: cards',
             quantity=entity_data['card_debits_count'],
-            amount=entity_data['card_debits_total_amount'],
+            volume=entity_data['card_debits_total_amount'],
             name='{}% of txn amount'.format(entity_data['variable_fee_percentage']),
-            total=entity_data['card_debits_total_fee'],
+            amount=entity_data['card_debits_total_fee'],
         )
         debit_bank_item = dict(
             type='Debits: bank accounts',
             quantity=entity_data['bank_account_debits_count'],
-            amount=entity_data['bank_account_debits_total_amount'],
+            volume=entity_data['bank_account_debits_total_amount'],
             name=(
                 '{}% of txn amount'
                 .format(entity_data['bank_account_debit_variable_fee_percentage'])
             ),
-            total=entity_data['bank_account_debits_total_fee'],
+            amount=entity_data['bank_account_debits_total_fee'],
         )
         if entity_data['bank_account_debit_variable_fee_cap']:
             debit_bank_item['name'] += (
@@ -84,43 +84,43 @@ class EventProcessor(object):
         credit_successed_item = dict(
             type='Credits: succeeded',
             quantity=entity_data['bank_account_credits_count'],
-            amount=entity_data['bank_account_credits_total_amount'],
+            volume=entity_data['bank_account_credits_total_amount'],
             name='${:.2f} per credit'.format(
                 entity_data['bank_account_credit_fee'] / 100.0
             ),
-            total=entity_data['bank_account_credits_total_fee'],
+            amount=entity_data['bank_account_credits_total_fee'],
         )
         credit_failed_item = dict(
             type='Credits: failed',
             quantity=entity_data['failed_credits_count'],
-            amount=entity_data['failed_credits_total_amount'],
+            volume=entity_data['failed_credits_total_amount'],
             name='${:.2f} per failed credit'.format(
                 entity_data['failed_credit_fee'] / 100.0
             ),
-            total=entity_data['failed_credits_total_fee'],
+            amount=entity_data['failed_credits_total_fee'],
         )
         refund_item = dict(
             type='Refunds',
             quantity=entity_data['reversals_count'],
-            amount=entity_data['reversals_total_amount'],
+            volume=entity_data['reversals_total_amount'],
             name='{}% of txn amount returned'.format(entity_data['variable_fee_percentage']),
-            total=entity_data['refunds_total_fee'],
+            amount=entity_data['refunds_total_fee'],
         )
         reversal_item = dict(
             type='Reversals',
             quantity=entity_data['reversals_count'],
-            amount=entity_data['reversals_total_amount'],
+            volume=entity_data['reversals_total_amount'],
             name='${:.2f} per reversal'.format(0),
-            total=entity_data['reversals_total_fee'],
+            amount=entity_data['reversals_total_fee'],
         )
         chargeback_item = dict(
             type='Chargebacks',
             quantity=entity_data['lost_debit_chargebacks_count'],
-            amount=entity_data['lost_debit_chargebacks_total_amount'],
+            volume=entity_data['lost_debit_chargebacks_total_amount'],
             name='${:.2f} per failed chargeback'.format(
                 entity_data['chargeback_fixed_fee'] / 100.0
             ),
-            total=entity_data['lost_debit_chargebacks_total_fee'],
+            amount=entity_data['lost_debit_chargebacks_total_fee'],
         )
         items = [
             hold_item,
@@ -134,13 +134,13 @@ class EventProcessor(object):
         ]
         for item in items:
             self.logger.info(
-                'Item: type=%s, quantity=%s, amount=%s, '
+                'Item: type=%s, quantity=%s, volume=%s, '
                 'name=%r, total=%s',
                 item['type'],
                 item['quantity'],
-                item['amount'],
+                item['volume'],
                 item['name'],
-                item['total'],
+                item['amount'],
             )
 
         ev11 = event_json['entity_views']['1.1']['invoices'][0]
@@ -154,6 +154,12 @@ class EventProcessor(object):
                 amount=adjustment['amount'],
                 reason=adjustment['description'],
             ))
+
+        # Notice: as the `total_fee` from balanced was already applied with 
+        # adjustments, we need to subtract adjustments before we send invoice
+        # to Billy, as adjustments are not assumed to be applied in the amount
+        # input
+        total_fee -= adjustments_total_fee
 
         self.logger.info('Marketplace URI: %s', marketplace_uri)
         self.logger.info('Customer URI: %s', customer_uri)
@@ -203,7 +209,7 @@ class EventProcessor(object):
 
 class EventConsumer(ConsumerMixin):
 
-    def __init__(self, connection, queues, processor, event_dir , logger=None):
+    def __init__(self, connection, queues, processor, event_dir, logger=None):
         self.logger = logger or logging.getLogger(__name__)
         self.connection = connection
         self.queues = queues

@@ -52,22 +52,28 @@ class TestProcessEvent(unittest.TestCase):
         )
         api.list_customers.assert_called_with(external_id=customer_uri)
         # create invoice
-        expected_amount = 72
+        expected_amount = 72 + 10 - 3
         expected_payment_uri = '/v1/bank_accounts/BA2eRgRHV25MuvHWUL4BYOYv'
         expected_items = [
-            dict(type='Holds', quantity=1, amount=112, total=30, name='$0.30 per hold'),
-            dict(type='Debits: cards', quantity=1, amount=1221, total=42, name='3.5% of txn amount'),
-            dict(type='Debits: bank accounts', quantity=0, amount=0, total=0, name='1.0% of txn amount (max $5.00 per debit)'),
-            dict(type='Credits: succeeded', quantity=0, amount=0, total=0, name='$0.25 per credit'),
-            dict(type='Credits: failed', quantity=0, amount=0, total=0, name='$0.00 per failed credit'),
-            dict(type='Refunds', quantity=0, amount=0, total=0, name='3.5% of txn amount returned'),
-            dict(type='Reversals', quantity=0, amount=0, total=0, name='$0.00 per reversal'),
-            dict(type='Chargebacks', quantity=0, amount=0, total=0, name='$15.00 per failed chargeback'),
+            dict(type='Holds', quantity=1, volume=112, amount=30, name='$0.30 per hold'),
+            dict(type='Debits: cards', quantity=1, volume=1221, amount=42, name='3.5% of txn amount'),
+            dict(type='Debits: bank accounts', quantity=0, volume=0, amount=0, name='1.0% of txn amount (max $5.00 per debit)'),
+            dict(type='Credits: succeeded', quantity=0, volume=0, amount=0, name='$0.25 per credit'),
+            dict(type='Credits: failed', quantity=0, volume=0, amount=0, name='$0.00 per failed credit'),
+            dict(type='Refunds', quantity=0, volume=0, amount=0, name='3.5% of txn amount returned'),
+            dict(type='Reversals', quantity=0, volume=0, amount=0, name='$0.00 per reversal'),
+            dict(type='Chargebacks', quantity=0, volume=0, amount=0, name='$15.00 per failed chargeback'),
         ]
-        expected_adjustments = [dict(
-            amount=999,
-            reason='hello',
-        )]
+        expected_adjustments = [
+            dict(
+                amount=-10,
+                reason='hello',
+            ),
+            dict(
+                amount=3,
+                reason='baby',
+            ),
+        ]
         expected_external_id = 'IV2elPkokX5rRAxobd84fM3t'
 
         _, kwargs = customer.invoice.call_args
