@@ -224,7 +224,7 @@ class EventConsumer(ConsumerMixin):
     def on_message(self, body, message):
         event_json = body
         event_type = event_json['type']
-        if not event_type.startswith('invoice.'):
+        if event_type != 'invoice.prepared':
             self.logger.warn('Ignore unknown event type %r', event_type)
             message.ack()
             return
@@ -232,7 +232,7 @@ class EventConsumer(ConsumerMixin):
             event_path = os.path.join(self.event_dir, event_json['guid'])
             with open(event_path, 'wt') as event_file:
                 data = json.dumps(event_json, sort_keys=True,
-                                 indent=4, separators=(',', ': '))
+                                  indent=4, separators=(',', ': '))
                 event_file.write(data)
         self.processor.process(event_json)
         message.ack()
