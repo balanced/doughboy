@@ -1,3 +1,3 @@
 PyYaml==3.10
 kombu==3.0.12
-billy-client==0.0.3
+billy-client==0.0.4
