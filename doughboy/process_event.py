@@ -234,7 +234,13 @@ class EventConsumer(ConsumerMixin):
                 data = json.dumps(event_json, sort_keys=True,
                                   indent=4, separators=(',', ': '))
                 event_file.write(data)
-        self.processor.process(event_json)
+        try:
+            self.processor.process(event_json)
+        except (SystemExit, KeyboardInterrupt):
+            raise
+        except:
+            self.logger.error('Failed to process message', exc_info=True)
+            return
         message.ack()
         self.logger.info('Ack message %s', event_json['guid'])
 
