@@ -10,33 +10,20 @@ handlers:
         class: logging.StreamHandler
         level: DEBUG
         formatter: simple
-        stream: ext://sys.stdout
+        stream: ext://sys.stderr
 
-    info_file_handler:
-        class: logging.handlers.RotatingFileHandler
-        level: INFO            
+    sentry:
+        class: raven.handlers.logging.SentryHandler
+        level: WARN
         formatter: simple
-        filename: logs/info.log
-        maxBytes: 10485760 # 10MB
-        backupCount: 20
-        encoding: utf8
-
-    error_file_handler:
-        class: logging.handlers.RotatingFileHandler
-        level: ERROR            
-        formatter: simple
-        filename: logs/errors.log
-        maxBytes: 10485760 # 10MB
-        backupCount: 20
-        encoding: utf8
 
 loggers:
     requests.packages.urllib3.connectionpool:
         level: WARNING
-        handlers: [console, error_file_handler]
+        handlers: [console, sentry]
         propagate: no
 
 root:
     level: INFO
-    handlers: [console, info_file_handler, error_file_handler]
+    handlers: [console, sentry]
 ...

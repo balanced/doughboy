@@ -1,3 +1,4 @@
 PyYaml==3.10
 kombu==3.0.12
 billy-client==0.0.5
+Raven==4.0.4
