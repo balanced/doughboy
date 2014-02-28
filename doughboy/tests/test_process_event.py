@@ -5,11 +5,12 @@ import unittest
 
 import mock
 
+from doughboy import tests
+
 
 class TestProcessEvent(unittest.TestCase):
 
     def setUp(self):
-        from invoice_feeder import tests
         test_pkg_dir = os.path.abspath(os.path.dirname(tests.__file__))
         fixture_dir = os.path.join(test_pkg_dir, 'fixtures')
         msg_filename = os.path.join(fixture_dir, 'msg.json')
@@ -23,7 +24,10 @@ class TestProcessEvent(unittest.TestCase):
         )
 
     def make_one(self, *args, **kwargs):
-        from invoice_feeder.process_event import EventProcessor
+        # Notice: we need to put this import here, otherwise as BillyAPI
+        # will be copyed to the module level on import, it will be no use
+        # to mock.patch it in following tests below
+        from doughboy.process_event import EventProcessor
         return EventProcessor(*args, **kwargs)
 
     @mock.patch('billy_client.BillyAPI')
