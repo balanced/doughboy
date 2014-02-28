@@ -4,10 +4,9 @@ import json
 import logging
 import logging.config
 
+import billy_client
 from kombu.mixins import ConsumerMixin
 from kombu import Queue
-from billy_client import BillyAPI
-from billy_client import DuplicateExternalIDError
 
 
 class EventProcessor(object):
@@ -169,7 +168,7 @@ class EventProcessor(object):
 
         billy_cfg = self.config['billy']
 
-        api = BillyAPI(
+        api = billy_client.BillyAPI(
             api_key=billy_cfg['api_key'], 
             endpoint=billy_cfg['endpoint'],
         )
@@ -199,7 +198,7 @@ class EventProcessor(object):
                 'Created invoice %s in Billy for %s (GUID from Balanced)', 
                 invoice.guid, invoice_guid,
             )
-        except DuplicateExternalIDError:
+        except billy_client.DuplicateExternalIDError:
             self.logger.warn('The invoice %s (GUID from Balanced) have already '
                              'been created, just ack the message', 
                              invoice_guid)
@@ -209,7 +208,7 @@ class EventProcessor(object):
 
 class EventConsumer(ConsumerMixin):
 
-    def __init__(self, connection, queues, processor, event_dir, logger=None):
+    def __init__(self, connection, queues, processor, event_dir=None, logger=None):
         self.logger = logger or logging.getLogger(__name__)
         self.connection = connection
         self.queues = queues

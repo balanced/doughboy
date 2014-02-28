@@ -6,6 +6,8 @@ import unittest
 import mock
 
 from doughboy import tests
+from doughboy.process_event import EventProcessor
+from doughboy.process_event import EventConsumer 
 
 
 class TestProcessEvent(unittest.TestCase):
@@ -24,10 +26,6 @@ class TestProcessEvent(unittest.TestCase):
         )
 
     def make_one(self, *args, **kwargs):
-        # Notice: we need to put this import here, otherwise as BillyAPI
-        # will be copyed to the module level on import, it will be no use
-        # to mock.patch it in following tests below
-        from doughboy.process_event import EventProcessor
         return EventProcessor(*args, **kwargs)
 
     @mock.patch('billy_client.BillyAPI')
@@ -90,3 +88,62 @@ class TestProcessEvent(unittest.TestCase):
         self.assertEqual(kwargs.pop('adjustments'), expected_adjustments)
         self.assertEqual(kwargs.pop('items'), expected_items)
         self.assertFalse(kwargs)
+
+
+class TestEventConsumer(unittest.TestCase):
+
+    def setUp(self):
+        test_pkg_dir = os.path.abspath(os.path.dirname(tests.__file__))
+        fixture_dir = os.path.join(test_pkg_dir, 'fixtures')
+        msg_filename = os.path.join(fixture_dir, 'msg.json')
+        self.msg_payload = json.load(open(msg_filename, 'rt'))
+
+    def make_one(self, *args, **kwargs):
+        return EventConsumer(*args, **kwargs)
+
+    def test_process_message(self):
+        processor = mock.Mock()
+        consumer = self.make_one(
+            connection=None, 
+            queues=None,
+            processor=processor,
+        )
+
+        msg = mock.Mock()
+        consumer.on_message(self.msg_payload, msg)
+        processor.process.assert_called_once()
+        msg.ack.assert_called_once()
+
+    def test_error_capture(self):
+        processor = mock.Mock()
+        processor.process.side_effect = RuntimeError('Boom!')
+        consumer = self.make_one(
+            connection=None, 
+            queues=None,
+            processor=processor,
+        )
+
+        msg = mock.Mock()
+        consumer.on_message(self.msg_payload, msg)
+        self.assertFalse(msg.ack.called)
+
+    def test_ignore_other_messages(self):
+        processor = mock.Mock()
+        consumer = self.make_one(
+            connection=None, 
+            queues=None,
+            processor=processor,
+        )
+
+        def assert_ignored(msg_type):
+            payload = self.msg_payload.copy()
+            payload['type'] = msg_type
+            msg = mock.Mock()
+            consumer.on_message(payload, msg)
+            msg.ack.assert_called_once()
+            self.assertFalse(processor.process.called)
+
+        assert_ignored('invoice.created')
+        assert_ignored('invoice.updated')
+        assert_ignored('invoice.foobared')
+        assert_ignored('invoice-no-funding-source')
