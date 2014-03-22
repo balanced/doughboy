@@ -89,6 +89,24 @@ class TestProcessEvent(unittest.TestCase):
         self.assertEqual(kwargs.pop('items'), expected_items)
         self.assertFalse(kwargs)
 
+    @mock.patch('billy_client.BillyAPI')
+    def test_process_event_only_for_whitelist(self, api_cls):
+        self.config['whitelist'] = dict(
+            whitelist_only=True,
+            marketplace_guids=['GUID1', 'GUID2'],
+        )
+        processor = self.make_one(self.config)
+        processor.process(self.msg_payload)
+        self.assertFalse(api_cls.called)
+
+        self.msg_payload['entity_data']['marketplace_guid'] = 'GUID1'
+        processor.process(self.msg_payload)
+        self.assertTrue(api_cls.called)
+
+        self.msg_payload['entity_data']['marketplace_guid'] = 'GUID2'
+        processor.process(self.msg_payload)
+        self.assertTrue(api_cls.called)
+
 
 class TestEventConsumer(unittest.TestCase):
 

@@ -27,9 +27,20 @@ class EventProcessor(object):
         mirrored_customer_guid = event_json['mirrored_customer_guid']
         mirrored_funding_source_guid = event_json['mirrored_funding_source_guid']
 
+        whitelist_cfg = self.config.get('whitelist', {})
+
         entity_data = event_json['entity_data']
         invoice_guid = entity_data['guid']
         marketplace_guid = entity_data['marketplace_guid']
+        if whitelist_cfg.get('whitelist_only', False):
+            whitelist_guids = whitelist_cfg.get('marketplace_guids')
+            if marketplace_guid not in whitelist_guids:
+                self.logger.info(
+                    'Marketplace %s not in white list, skipped', 
+                    marketplace_guid,
+                )
+                return
+
         marketplace_uri = '/v1/marketplaces/{}'.format(marketplace_guid)
         customer_uri = '/v1/customers/{}'.format(mirrored_customer_guid)
         if mirrored_funding_source_guid.startswith('BA'):
