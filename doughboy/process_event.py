@@ -186,9 +186,9 @@ class EventProcessor(object):
         company = api.get_company(billy_cfg['company_guid'])
 
         # retrieval the customer 
-        customers = list(api.list_customers(external_id=customer_uri))
+        customers = list(api.list_customers(processor_uri=customer_uri))
         if not customers:
-            customer = company.create_customer(external_id=customer_uri)
+            customer = company.create_customer(processor_uri=customer_uri)
         elif len(customers) == 1:
             customer = customers[0]
         else:
