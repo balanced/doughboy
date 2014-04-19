@@ -52,7 +52,7 @@ class TestProcessEvent(unittest.TestCase):
         customer_uri = '/v1/customers/{}'.format(
             self.msg_payload['mirrored_customer_guid']
         )
-        api.list_customers.assert_called_with(external_id=customer_uri)
+        api.list_customers.assert_called_with(processor_uri=customer_uri)
         # create invoice
         expected_amount = 72 + 10 - 3
         expected_payment_uri = '/v1/bank_accounts/BA2eRgRHV25MuvHWUL4BYOYv'
