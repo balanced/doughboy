@@ -55,7 +55,7 @@ class TestProcessEvent(unittest.TestCase):
         api.list_customers.assert_called_with(processor_uri=customer_uri)
         # create invoice
         expected_amount = 72 + 10 - 3
-        expected_payment_uri = '/v1/bank_accounts/BA2eRgRHV25MuvHWUL4BYOYv'
+        expected_funding_instrument_uri = '/v1/bank_accounts/BA2eRgRHV25MuvHWUL4BYOYv'
         expected_items = [
             dict(type='Holds', quantity=1, volume=112, amount=30, name='$0.30 per hold'),
             dict(type='Debits: cards', quantity=1, volume=1221, amount=42, name='3.5% of txn amount'),
@@ -84,7 +84,7 @@ class TestProcessEvent(unittest.TestCase):
                          'Balanced Transaction Usage Invoice')
         self.assertEqual(kwargs.pop('amount'), expected_amount)
         self.assertEqual(kwargs.pop('external_id'), expected_external_id)
-        self.assertEqual(kwargs.pop('payment_uri'), expected_payment_uri)
+        self.assertEqual(kwargs.pop('funding_instrument_uri'), expected_funding_instrument_uri)
         self.assertEqual(kwargs.pop('adjustments'), expected_adjustments)
         self.assertEqual(kwargs.pop('items'), expected_items)
         self.assertFalse(kwargs)
