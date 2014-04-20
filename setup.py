@@ -15,7 +15,7 @@ test_requires = map(lambda r: r.strip(), test_requires.splitlines())
 
 setup(
     name='doughboy',
-    version='1.1.10',
+    version='1.1.12',
     author='Balanced Payment',
     author_email='support@balancedpayments.com',
     url='https://github.com/balanced/doughboy',
