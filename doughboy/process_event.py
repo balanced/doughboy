@@ -200,7 +200,7 @@ class EventProcessor(object):
                 # TODO: a better title here
                 title='Balanced Transaction Usage Invoice',
                 amount=total_fee,
-                payment_uri=funding_source_uri,
+                funding_instrument_uri=funding_source_uri,
                 items=items,
                 adjustments=adjustments,
                 external_id=invoice_guid,
